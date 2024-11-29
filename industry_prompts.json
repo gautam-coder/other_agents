@@ -1,0 +1,22 @@
+{
+    "Healthcare": {
+        "Portfolio Support Agent": {
+            "Portfolio Growth": {
+                "1": "What is the primary objective for this report? Examples: Analyze demand trends for wearable health devices, Optimize pricing strategies for telemedicine services, Benchmark competitor positioning in urban diagnostics.",
+                "2": "Please upload relevant documents to support this analysis. Examples: Sales data for healthcare services by region, Competitor pricing reports, Patient demographics segmented by age and region.",
+                "3": "Considering your objective, what are your short-term and long-term goals? Examples: Short-term: Increase telehealth device adoption rates among urban seniors. Long-term: Expand wearable device availability to rural regions.",
+                "4": "What specific questions should this report address? Examples: Which rural regions show the highest interest in wearable health devices? How are competitors structuring their marketing strategies? What factors influence adoption rates among urban seniors?",
+                "5": "Based on your objectives and provided data, here are suggested data sources for this analysis: National Health Survey, Competitor Pricing Database, Healthcare Market Trends Report. Would you like to modify or add any data sources?",
+                "6": "Based on the goals and data, here are recommended report templates: Market Segmentation Report, Pricing Strategy Report, Competitor Insights Report. Would you like to choose one or request a custom format?"
+            },
+            "Risk Analysis": {
+                "1": "What are the key risk factors for the healthcare portfolio? Examples: regulatory risks, financial risks, operational risks.",
+                "2": "Please provide documents that detail the risk history. Examples: compliance reports, operational logs, financial projections.",
+                "3": "What are your immediate and long-term risk mitigation goals?",
+                "4": "What specific risks should this analysis prioritize?",
+                "5": "Would you like to include additional sources such as past audits, market stability trends, or competitor risk analysis?",
+                "6": "Here are risk assessment templates: Risk Heat Map, Scenario Analysis, Risk Prioritization Matrix. Please select or suggest another."
+            }
+        }
+    }
+}
