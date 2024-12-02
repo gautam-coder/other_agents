@@ -36,20 +36,18 @@ class StepRequest(BaseModel):
 @app.post("/process-step")
 async def process_step(request: StepRequest):
     # Fetch the appropriate prompt
-    conversation_history = load_conversation_from_file(request.user_id,request.thread_id)
-    print(conversation_history)
+    conversation_history = load_conversation_from_file(request.userId,request.threadId)
     prompt = get_prompt(request.industry, request.agent, request.useCase, request.step)
 
     if prompt == "Prompt not found. Please check the input values.":
         return {"error": prompt}
 
     # Generate AI response
-    ai_response = call_azure_openai(prompt, request.data)
-    ai_response.choices[0].message.content
-    conversation_history.append({"user": request.user_input, "ai_response": ai_response})
+    ai_response = call_azure_openai(prompt, request.data["user_input"], conversation_history)
+    conversation_history.append({"user": request.data["user_input"], "assistant": ai_response})
 
-        # Save conversation history back to the file
-    save_conversation_to_file(request.user_id,request.thread_id, {"user": request.user_input, "assistant": ai_response})
+    # Save conversation history back to the file
+    save_conversation_to_file(request.userId,request.threadId, conversation_history[-1])
 
     # Return the response
     return {
@@ -66,24 +64,32 @@ with open("industry_prompts.json", "r") as f:
 
 def get_prompt(industry, agent, use_case, step):
     try:
-        return industry_prompts[industry][agent][use_case][str(step)]
+        # Load the base prompt
+        prompt = industry_prompts[industry][agent][use_case]
+        prompt = prompt.replace("[industry]", industry).replace("[agent]", agent).replace("[useCase]", use_case)
+        full_prompt = f"{prompt}\n\n This conversation is currently in stage {step}, so respond accordingly."
+        return full_prompt
     except KeyError:
         return "Prompt not found. Please check the input values."
 
-def call_azure_openai(prompt, context):
-    os.environ["AZURE_OPENAI_API_KEY"] = "91c84c6ef05242af993d7df94afc57ed"
+def call_azure_openai(prompt, context, conversation_history):
+    os.environ["AZURE_OPENAI_API_KEY"] = ""
     
     client = AzureOpenAI(
         azure_endpoint = "https://webcrawl.openai.azure.com/",
-        api_key=os.getenv("91c84c6ef05242af993d7df94afc57ed"),
+        api_key=os.getenv(""),
         api_version="2024-02-15-preview"
     )
 
-
-    message_text = [{"role":"system","content":prompt},{"role":"user","content":context}]
+    message_text = [{"role": "system", "content": prompt}]
+    for entry in conversation_history:
+        message_text.append({"role": "user", "content": entry["user"]})
+        message_text.append({"role": "assistant", "content": entry["assistant"]})
+    
+    message_text.append({"role": "user", "content": context})
 
     completion = client.chat.completions.create(
-        model="web_gpt4", # model = "deployment_name"
+        model="gpt4o", # model = "deployment_name"
         messages = message_text,
         temperature=0.6,
         max_tokens=1000,
@@ -92,7 +98,7 @@ def call_azure_openai(prompt, context):
         presence_penalty=0,
         stop=None
     )
-    return completion
+    return completion.choices[0].message.content
 
 
 # Path to the JSON file where conversations are saved
@@ -102,11 +108,11 @@ CONVERSATION_FILE = "conversations.json"
 
 
 def chatbot_filtration(siteslink):
-    os.environ["AZURE_OPENAI_API_KEY"] = "91c84c6ef05242af993d7df94afc57ed"
+    os.environ["AZURE_OPENAI_API_KEY"] = ""
     
     client = AzureOpenAI(
         azure_endpoint = "https://webcrawl.openai.azure.com/",
-        api_key=os.getenv("91c84c6ef05242af993d7df94afc57ed"),
+        api_key=os.getenv(""),
         api_version="2024-02-15-preview"
     )
 
@@ -128,13 +134,13 @@ def chatbot_filtration(siteslink):
         presence_penalty=0,
         stop=None
     )
-    return completion
+    return completion.choices[0].message.content
 
 
 
 
 def tavily_search(querymain):
-    tavily_client = TavilyClient(api_key="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")
+    tavily_client = TavilyClient(api_key="")
     # Step 2. Executing a context search query
         #context = tavily_client.get_search_context(query="recent merger and acquistion in Ai biochips")
     response=[]
@@ -160,23 +166,23 @@ def tavily_search(querymain):
 
 #print(tavily_search("who is the founder of google"))
 
-def save_conversation_to_file(user_id, thread_id, conversation):
+def save_conversation_to_file(userId, threadId, conversation):
     try:
         if os.path.exists(CONVERSATION_FILE):
             with open(CONVERSATION_FILE, "r+") as file:
                 data = json.load(file)
 
-                # If user_id exists, check for thread_id
-                if user_id in data:
-                    if thread_id in data[user_id]:
+                # If userId exists, check for threadId
+                if userId in data:
+                    if threadId in data[userId]:
                         # Append conversation to the existing thread
-                        data[user_id][thread_id].append(conversation)
+                        data[userId][threadId].append(conversation)
                     else:
                         # Create a new thread with the conversation
-                        data[user_id][thread_id] = [conversation]
+                        data[userId][threadId] = [conversation]
                 else:
                     # Create a new user entry with the thread and conversation
-                    data[user_id] = {thread_id: [conversation]}
+                    data[userId] = {threadId: [conversation]}
 
                 # Rewind the file and save the updated data
                 file.seek(0)
@@ -184,13 +190,13 @@ def save_conversation_to_file(user_id, thread_id, conversation):
         else:
             # Create a new file with the initial data structure
             with open(CONVERSATION_FILE, "w") as file:
-                json.dump({user_id: {thread_id: [conversation]}}, file, indent=4)
+                json.dump({userId: {threadId: [conversation]}}, file, indent=4)
 
     except Exception as e:
         print(f"Error saving conversation: {e}")
 
-# Function to load the conversation history for a specific user_id and thread_id
-def load_conversation_from_file(user_id, thread_id):
+# Function to load the conversation history for a specific userId and threadId
+def load_conversation_from_file(userId, threadId):
     if os.path.exists(CONVERSATION_FILE):
         with open(CONVERSATION_FILE, "r") as file:
             try:
@@ -201,7 +207,7 @@ def load_conversation_from_file(user_id, thread_id):
                     raise ValueError("Corrupted data: Expected a dictionary at the root level")
 
                 # Safely retrieve the conversation history
-                return data.get(user_id, {}).get(thread_id, [])
+                return data.get(userId, {}).get(threadId, [])
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"Error loading conversation: {e}")
                 return []
